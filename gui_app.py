@@ -210,7 +210,7 @@ class CheckinApp:
         # ===== 日志区 =====
         log_frame = tk.LabelFrame(root, text="  运行日志  ", font=("Microsoft YaHei UI", 10),
                                    bg="#fff", fg="#333", bd=1, relief="groove")
-        log_frame.pack(fill="both", expand=True, **pad, pady=(4, 12))
+        log_frame.pack(fill="both", expand=True, padx=12, pady=(4, 12))
 
         self.log_text = scrolledtext.ScrolledText(log_frame, height=8, font=("Consolas", 9),
                                                    bg="#1e1e1e", fg="#d4d4d4", insertbackground="#fff",

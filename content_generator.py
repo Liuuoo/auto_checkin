@@ -113,7 +113,7 @@ def _generate_commit_message(ai_client, content, topic):
     messages = [
         {
             "role": "system",
-            "content": "你是一个 Git commit message 生成器。请根据内容生成一条简洁的英文 commit message，格式为：'docs: 简要描述'。只输出这一行，不要任何额外文字。",
+            "content": "你是一个 Git commit message 生成器。请根据内容生成一条简洁的中文 commit message，格式为：'docs: 简要中文描述'。只输出这一行，不要任何额外文字。",
         },
         {
             "role": "user",
