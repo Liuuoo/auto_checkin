@@ -1,0 +1,38 @@
+curl --request POST \
+  --url https://api.siliconflow.cn/v1/messages \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "model": "Pro/zai-org/GLM-4.7",
+    "messages": [
+      {"role": "system", "content": "你是一个有用的助手"},
+      {"role": "user", "content": "你好，请介绍一下你自己"}
+    ]
+  }'
+
+{
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "...",
+      "signature": "tvshsltrjs"
+    },
+    {
+      "text": "Hello! I'm GLM, trained by Z.ai. How can I assist you today? Whether you have questions or just want to chat, I'm happy to help.",
+      "type": "text"
+    }
+  ],
+  "id": "msg_T15jjp718fACotrwiLp3KwVu",
+  "model": "Pro/zai-org/GLM-4.7",
+  "role": "assistant",
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+    "input_tokens": 6,
+    "output_tokens": 215
+  }
+}
+
+
+密钥为： sk-nsfopodkckwcvwwmqywlcnxzbgciwwtrvanmmjikkhafefob
