@@ -8,10 +8,11 @@ from content_generator import generate_content
 from github_manager import GitHubManager
 
 
-def run_checkin(dry_run=False, topic_name=None, count=1):
+def run_checkin(dry_run=False, topic_name=None, count=1, on_article=None):
     """执行签到。
     topic_name: 指定主题名称，None 为随机。
     count: 生成文章数量。
+    on_article: 可选回调 (filename, content)，每生成一篇文章后调用。
     """
     config = load_config()
     if not config:
@@ -35,6 +36,10 @@ def run_checkin(dry_run=False, topic_name=None, count=1):
         print(f"生成完成: {filename} (分类: {category})")
         print(f"Commit 消息: {commit_msg}")
         print(f"内容长度: {len(content)} 字符")
+
+        # 回调通知 GUI 显示文章预览
+        if on_article:
+            on_article(filename, content)
 
         if dry_run:
             path = gm.save_local_only(filename, content)

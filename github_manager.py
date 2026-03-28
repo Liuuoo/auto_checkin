@@ -38,8 +38,10 @@ class GitHubManager:
         """拉取最新代码"""
         try:
             origin = self.repo.remotes.origin
+            curr_branch = self.repo.active_branch.name
+            print(f"正在从远程拉取分支: {curr_branch}...")
             origin.pull()
-            print("已拉取最新代码。")
+            print("已成功拉取最新代码。")
         except Exception as e:
             print(f"拉取失败（可能是空仓库或无远程分支）: {e}")
 
@@ -65,8 +67,11 @@ class GitHubManager:
         print(f"已提交: {commit_msg}")
 
         origin = self.repo.remotes.origin
-        origin.push()
-        print("已推送到远程仓库。")
+        print(f"正在推送到远程分支: {self.repo.active_branch.name}...")
+        push_info = origin.push()
+        for info in push_info:
+            print(f"推送完成: {info.summary}")
+        print("已成功推送到远程仓库。")
 
         return file_path
 
@@ -80,3 +85,38 @@ class GitHubManager:
             f.write(content)
         print(f"[dry-run] 文件已保存到本地: {file_path}")
         return file_path
+
+    def test_connection(self):
+        """测试仓库连接：检测 Git 是否可用、远程仓库是否可达。
+        返回 (bool, str) ——成功/失败和描述信息。
+        """
+        import subprocess
+
+        # 1. 检测 git 是否可用
+        try:
+            result = subprocess.run(
+                ["git", "--version"], capture_output=True, text=True, timeout=10
+            )
+            git_version = result.stdout.strip()
+            print(f"Git 版本: {git_version}")
+        except FileNotFoundError:
+            return False, "未检测到 Git，请先安装 Git"
+        except Exception as e:
+            return False, f"Git 检测失败: {e}"
+
+        # 2. 检测远程仓库是否可达
+        url = self._get_clone_url()
+        try:
+            print(f"正在测试远程仓库连接: {self.config['repo_url']}...")
+            result = subprocess.run(
+                ["git", "ls-remote", "--exit-code", url],
+                capture_output=True, text=True, timeout=30
+            )
+            if result.returncode == 0:
+                return True, "仓库连接成功！远程仓库可达。"
+            else:
+                return False, f"仓库不可达: {result.stderr.strip()}"
+        except subprocess.TimeoutExpired:
+            return False, "连接超时（30 秒），请检查网络或 SSH 配置"
+        except Exception as e:
+            return False, f"连接测试失败: {e}"

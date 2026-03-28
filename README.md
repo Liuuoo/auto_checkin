@@ -1,92 +1,112 @@
 # GitHub 每日签到工具
 
-自动生成技术文章并推送到 GitHub，保持每日 contribution 记录。支持 GUI 桌面应用，可开机自启、托盘常驻。
+一个基于 Python 的 Windows 桌面应用，用来自动生成技术内容并提交到 GitHub，帮助持续维护每日 contribution 记录。
 
-## 功能
+## 主要功能
 
-- **AI 生成内容** — 支持 8 种技术主题（算法、Python 技巧、Web 开发、系统设计等），可指定主题或随机生成
-- **自动推送** — 生成的文章自动 commit 并 push 到 GitHub 仓库
-- **GUI 桌面应用** — tkinter 窗口界面，操作直观
-- **系统托盘** — 关闭窗口后最小化到托盘，后台继续运行
-- **定时签到** — 设置每日签到时间，自动执行
-- **开机自启** — 一键配置，开机后自动以托盘模式启动
-- **多厂商支持** — SiliconFlow、OpenAI、DeepSeek 及任何 OpenAI 兼容 API
-
-## 快速开始
-
-### 安装依赖
-
-```bash
-pip install -r requirements.txt
-```
-
-### 首次配置
-
-```bash
-python main.py config
-```
-
-按提示配置 AI 服务商（API Key）和 GitHub 仓库信息。
-
-### 启动 GUI 应用
-
-```bash
-python main.py tray
-```
-
-### 命令行模式
-
-```bash
-python main.py              # 执行一次签到
-python main.py --dry-run    # 预览模式，不推送
-python main.py test         # 测试 API 连接
-python main.py config       # 重新配置
-python main.py schedule     # 配置 Windows 定时任务
-```
-
-## GUI 界面
-
-启动后显示桌面窗口，包含：
-
-- **状态面板** — 运行状态、上次签到时间与结果、下次签到时间
-- **签到选项** — 选择主题（随机/指定）、文章数量（1-10 篇）
-- **操作按钮** — 立即签到 / 预览
-- **设置区** — 签到时间、端口、开机自启、最小化到托盘
-- **运行日志** — 实时日志输出
-
-关闭窗口后程序最小化到系统托盘，双击托盘图标恢复窗口。
-
-## 生成内容主题
-
-| 主题 | 内容 |
-|------|------|
-| 算法题解 | 经典算法题分析与 Python 实现 |
-| Python 技巧 | 高级特性与实用技巧 |
-| 数据结构 | 经典数据结构 Python 实现 |
-| 设计模式 | 设计模式 Python 实现 |
-| Web 开发 | Web 开发技术文章 |
-| 系统设计 | 系统架构设计文章 |
-| 新技术介绍 | 新技术/工具介绍 |
-| DevOps 实践 | 运维与 DevOps 实践 |
-
-文件按 `年/月/日期-标题.md` 自动组织存放。
-
-## 项目结构
-
-```
-├── main.py               # 主入口
-├── gui_app.py             # GUI 桌面应用
-├── ai_client.py           # AI API 客户端
-├── content_generator.py   # 内容生成
-├── github_manager.py      # Git 仓库操作
-├── config_manager.py      # 配置管理
-├── setup_schedule.py      # Windows 定时任务
-├── requirements.txt       # 依赖
-└── config.json            # 配置文件（自动生成，已 gitignore）
-```
+- 支持 GUI 桌面界面，适合日常使用
+- 支持立即签到和预览模式
+- 支持定时自动签到
+- 支持系统托盘常驻运行
+- 支持开机自动启动
+- 支持启动时后台静默运行，直接进入托盘
+- 支持关闭窗口时最小化到托盘
+- 支持多家 OpenAI 兼容模型服务商
+- 支持将生成内容自动提交并推送到 GitHub 仓库
 
 ## 环境要求
 
+- Windows 10/11
 - Python 3.8+
 - Git
-- Windows 10/11
+
+## 安装依赖
+
+```bash
+py -3 -m pip install -r requirements.txt
+```
+
+## 首次配置
+
+命令行初始化配置：
+
+```bash
+py -3 main.py config
+```
+
+也可以直接启动图形界面，在“配置”页填写：
+
+- AI 服务商、Base URL、模型名、API Key
+- GitHub 仓库地址
+- 认证方式：SSH 或 HTTPS + Token
+- 本地仓库目录
+
+## 启动方式
+
+启动图形界面：
+
+```bash
+py -3 main.py tray
+```
+
+静默启动并直接进入托盘：
+
+```bash
+py -3 gui_app.py --minimized
+```
+
+## 命令行用法
+
+```bash
+py -3 main.py              # 执行一次签到并推送
+py -3 main.py --dry-run    # 仅生成内容，不推送
+py -3 main.py test         # 测试 AI 连接
+py -3 main.py config       # 重新配置
+py -3 main.py schedule     # 配置 Windows 定时任务
+py -3 main.py tray         # 启动桌面程序
+py -3 main.py help         # 查看帮助
+```
+
+## 设置页说明
+
+在“设置”页可以配置：
+
+- 每日签到时间
+- 本地状态页端口
+- 开机自动启动
+- 启动时后台静默运行（直接进入托盘）
+- 关闭窗口时最小化到托盘
+
+说明：
+
+- 开启“开机自动启动”后，程序会写入当前用户的 Windows 启动项
+- 如果同时开启“启动时后台静默运行”，则开机后不会弹出主窗口，而是直接在系统托盘中运行
+- 如果只开启“开机自动启动”，则开机后会正常显示主窗口
+
+## 打包
+
+直接执行：
+
+```bash
+build.bat
+```
+
+打包完成后，可执行文件位于：
+
+```text
+dist\GitHubCheckinTool.exe
+```
+
+## 项目结构
+
+```text
+main.py                主入口
+gui_app.py             GUI 桌面应用
+config_manager.py      配置读写
+ai_client.py           AI 接口封装
+content_generator.py   内容生成逻辑
+github_manager.py      Git/GitHub 操作
+setup_schedule.py      Windows 定时任务配置
+requirements.txt       项目依赖
+build.bat              打包脚本
+```

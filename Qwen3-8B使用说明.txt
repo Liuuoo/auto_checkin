@@ -36,3 +36,6 @@ curl --request POST \
 
 
 密钥为： sk-nsfopodkckwcvwwmqywlcnxzbgciwwtrvanmmjikkhafefob
+
+
+git@github.com:Liuuoo/daily-checkin.git

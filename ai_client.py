@@ -23,11 +23,19 @@ class AIClient:
             "max_tokens": max_tokens,
         }
 
+        print(f"--- AI 请求 [{self.model}] ---")
+        print(f"URL: {url}")
+        # 隐藏敏感 Key 的部分
+        print(f"Messages: {messages[-1]['content'][:100]}...")
+
         resp = requests.post(url, json=payload, headers=headers, timeout=120)
         resp.raise_for_status()
         data = resp.json()
 
-        return self._extract_text(data)
+        print(f"--- AI 响应 ---")
+        result = self._extract_text(data)
+        print(f"Response (提取后): {result[:100]}...")
+        return result
 
     def _extract_text(self, data):
         """从响应中提取纯文本，兼容多种格式"""
