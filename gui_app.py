@@ -211,6 +211,69 @@ def _save_service_config(svc):
 
 
 # ══════════════════════════════════════════════════════
+#  响应式布局管理器
+# ══════════════════════════════════════════════════════
+class ResponsiveLayoutManager:
+    """响应式布局管理器 - 处理窗口大小变化和布局切换"""
+
+    BREAKPOINTS = {
+        "mobile": 600,   # 小屏：隐藏侧边栏，单列
+        "tablet": 900,   # 中屏：显示侧边栏，单列
+        "desktop": 1200  # 大屏：侧边栏 + 可能多列
+    }
+
+    def __init__(self, app):
+        self.app = app
+        self.current_breakpoint = "desktop"
+        self.sidebar_visible = True
+        self.columns = 1  # 当前卡片列数
+
+    def on_window_resize(self, width):
+        """窗口宽度变化时调用"""
+        new_breakpoint = self._get_breakpoint(width)
+
+        if new_breakpoint != self.current_breakpoint:
+            self.current_breakpoint = new_breakpoint
+            self._apply_layout()
+
+    def _get_breakpoint(self, width):
+        if width < self.BREAKPOINTS["mobile"]:
+            return "mobile"
+        elif width < self.BREAKPOINTS["tablet"]:
+            return "tablet"
+        else:
+            return "desktop"
+
+    def _apply_layout(self):
+        """根据断点应用布局"""
+        if self.current_breakpoint == "mobile":
+            self._hide_sidebar()
+            self.columns = 1
+        elif self.current_breakpoint == "tablet":
+            self._show_sidebar()
+            self.columns = 1
+        else:  # desktop
+            self._show_sidebar()
+            self.columns = 1  # 可根据需要改为2
+
+        # 通知配置页面重新布局卡片
+        if hasattr(self.app, '_config_card_container'):
+            self.app._relayout_cards(self.app._config_card_container, self.columns)
+
+    def _hide_sidebar(self):
+        if self.sidebar_visible:
+            self.app._sidebar.grid_remove()
+            self.app.grid_columnconfigure(0, minsize=0, weight=0)
+            self.sidebar_visible = False
+
+    def _show_sidebar(self):
+        if not self.sidebar_visible:
+            self.app._sidebar.grid()
+            self.app.grid_columnconfigure(0, minsize=220, weight=0)
+            self.sidebar_visible = True
+
+
+# ══════════════════════════════════════════════════════
 #  主应用
 # ══════════════════════════════════════════════════════
 class CheckinApp(ctk.CTk):
@@ -241,16 +304,26 @@ class CheckinApp(ctk.CTk):
         self._start_minimized = start_minimized
         self._current_page = None
 
+        # ── 配置主窗口 grid ──
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=0, minsize=220)  # 侧边栏列
+        self.grid_columnconfigure(1, weight=1)  # 内容列
+
         # ── 构建 UI ──
         self._build_sidebar()
         self._content = ctk.CTkFrame(self, fg_color=GH_THEME["bg"], corner_radius=0)
-        self._content.pack(side="right", fill="both", expand=True)
+        self._content.grid(row=0, column=1, sticky="nsew")
 
         self._pages = {}
         self._build_checkin_page()
         self._build_config_page()
         self._build_settings_page()
         self._show_page("checkin")
+
+        # ── 响应式管理器 ──
+        self.responsive_mgr = ResponsiveLayoutManager(self)
+        self._resize_timer = None
+        self.bind("<Configure>", self._on_window_configure)
 
         # ── 定时 & 托盘 ──
         self._setup_scheduler()
@@ -260,13 +333,23 @@ class CheckinApp(ctk.CTk):
         if start_minimized:
             self.after(100, self._hide_to_tray)
 
+    def _on_window_configure(self, event):
+        """窗口大小变化处理（带防抖）"""
+        if event.widget == self:
+            if self._resize_timer:
+                self.after_cancel(self._resize_timer)
+
+            self._resize_timer = self.after(200,
+                lambda: self.responsive_mgr.on_window_resize(event.width))
+
     # ──────────────────────────────────────────────────
     #  侧边栏
     # ──────────────────────────────────────────────────
     def _build_sidebar(self):
         sb = ctk.CTkFrame(self, width=220, fg_color=GH_THEME["sidebar"], corner_radius=0)
-        sb.pack(side="left", fill="y")
-        sb.pack_propagate(False)
+        sb.grid(row=0, column=0, sticky="nsew")  # 改用 grid
+        sb.grid_propagate(False)  # 防止自动调整大小
+        self._sidebar = sb  # 保存引用供响应式管理器使用
 
         # Logo
         logo_frame = ctk.CTkFrame(sb, fg_color="transparent")
@@ -458,11 +541,15 @@ class CheckinApp(ctk.CTk):
         ctk.CTkLabel(page, text="模型与仓库配置", font=(FONT_FAMILY, 28, "bold"),
                      text_color=GH_THEME["text"]).pack(anchor="w", padx=32, pady=(20, 12))
 
+        # 创建卡片容器（用于 grid 布局卡片）
+        self._config_card_container = ctk.CTkFrame(page, fg_color="transparent")
+        self._config_card_container.pack(fill="both", expand=True, padx=32)
+
         # 全局输入框对齐参数
         lbl_width = 120
 
         # ── AI 配置 ──
-        ai_card = self._card(page, "🤖  AI 模型配置")
+        ai_card = self._card(self._config_card_container, "🤖  AI 模型配置")
 
         history = load_config_history()
         ai_names = [p["name"] for p in history.get("ai_profiles", [])]
@@ -490,20 +577,20 @@ class CheckinApp(ctk.CTk):
         self._add_field(ai_card, "API Key", var=self._apikey_var, show="*", label_width=lbl_width)
 
         btn_row = ctk.CTkFrame(ai_card, fg_color="transparent")
-        btn_row.pack(fill="x", padx=24, pady=(8, 16))
+        btn_row.pack(fill="x", padx=24, pady=4)
         # 补齐 label_width 以对齐按钮
-        ctk.CTkFrame(btn_row, width=lbl_width, fg_color="transparent").pack(side="left")
-        
+        ctk.CTkFrame(btn_row, width=lbl_width, fg_color="transparent").pack(side="left", padx=0, pady=0)
+
         ctk.CTkButton(btn_row, text="🔗  测试 AI 连接", width=160, height=38,
                       font=(FONT_FAMILY, 14, "bold"),
                       fg_color=GH_THEME["card_hover"], hover_color=GH_THEME["border"],
                       text_color=GH_THEME["text"], border_width=1, border_color=GH_THEME["border"],
-                      corner_radius=8, command=self._test_ai).pack(side="left")
+                      corner_radius=8, command=self._test_ai).pack(side="left", padx=0, pady=0)
         self._ai_test_lbl = ctk.CTkLabel(btn_row, text="", font=(FONT_FAMILY, 13), text_color=GH_THEME["text_dim"])
-        self._ai_test_lbl.pack(side="left", padx=16)
+        self._ai_test_lbl.pack(side="left", padx=(12, 0), pady=0)
 
         # ── GitHub 配置 ──
-        gh_card = self._card(page, "🐙  GitHub 仓库配置")
+        gh_card = self._card(self._config_card_container, "🐙  GitHub 仓库配置")
 
         gh_names = [p["name"] for p in history.get("github_profiles", [])]
         self._gh_hist_var = ctk.StringVar(value="")
@@ -518,7 +605,7 @@ class CheckinApp(ctk.CTk):
 
         self._auth_var = ctk.StringVar(value=gh_cfg.get("auth_type", "ssh"))
         auth_row = ctk.CTkFrame(gh_card, fg_color="transparent")
-        auth_row.pack(fill="x", padx=24, pady=6)
+        auth_row.pack(fill="x", padx=24, pady=4)
         ctk.CTkLabel(auth_row, text="认证方式", font=(FONT_FAMILY, 14),
                      text_color=GH_THEME["text"], width=lbl_width, anchor="w").pack(side="left")
         ctk.CTkRadioButton(auth_row, text="SSH", variable=self._auth_var, value="ssh",
@@ -539,7 +626,7 @@ class CheckinApp(ctk.CTk):
 
         self._local_dir_var = ctk.StringVar(value=gh_cfg.get("local_dir", os.path.join(SCRIPT_DIR, "repo")))
         dir_row = ctk.CTkFrame(gh_card, fg_color="transparent")
-        dir_row.pack(fill="x", padx=24, pady=6)
+        dir_row.pack(fill="x", padx=24, pady=4)
         ctk.CTkLabel(dir_row, text="本地目录", font=(FONT_FAMILY, 14),
                      text_color=GH_THEME["text"], width=lbl_width, anchor="w").pack(side="left")
         ctk.CTkEntry(dir_row, textvariable=self._local_dir_var, height=38,
@@ -551,22 +638,25 @@ class CheckinApp(ctk.CTk):
                       corner_radius=8, command=self._browse_dir).pack(side="left", padx=(8, 0))
 
         gh_btn_row = ctk.CTkFrame(gh_card, fg_color="transparent")
-        gh_btn_row.pack(fill="x", padx=24, pady=(8, 16))
-        ctk.CTkFrame(gh_btn_row, width=lbl_width, fg_color="transparent").pack(side="left")
+        gh_btn_row.pack(fill="x", padx=24, pady=4)
+        ctk.CTkFrame(gh_btn_row, width=lbl_width, fg_color="transparent").pack(side="left", padx=0, pady=0)
         ctk.CTkButton(gh_btn_row, text="🔗  测试仓库连接", width=160, height=38,
                       font=(FONT_FAMILY, 14, "bold"),
                       fg_color=GH_THEME["card_hover"], hover_color=GH_THEME["border"],
                       text_color=GH_THEME["text"], border_width=1, border_color=GH_THEME["border"],
-                      corner_radius=8, command=self._test_repo).pack(side="left")
+                      corner_radius=8, command=self._test_repo).pack(side="left", padx=0, pady=0)
         self._repo_test_lbl = ctk.CTkLabel(gh_btn_row, text="", font=(FONT_FAMILY, 13), text_color=GH_THEME["text_dim"])
-        self._repo_test_lbl.pack(side="left", padx=16)
+        self._repo_test_lbl.pack(side="left", padx=(12, 0), pady=0)
+
+        # 初始布局（默认单列）
+        self._relayout_cards(self._config_card_container, 1)
 
         # 保存按钮
         ctk.CTkButton(page, text="💾  保存所有配置", height=44, width=220,
                       font=(FONT_FAMILY, 15, "bold"),
                       fg_color=GH_THEME["primary"], hover_color=GH_THEME["primary_hover"],
                       corner_radius=8, command=self._save_all_config
-                      ).pack(anchor="w", padx=32, pady=(12, 24))
+                      ).pack(anchor="w", padx=32, pady=(8, 20))
 
     # ──────────────────────────────────────────────────
     #  设置页
@@ -625,18 +715,49 @@ class CheckinApp(ctk.CTk):
     #  UI 工具方法
     # ══════════════════════════════════════════════════
     def _card(self, parent, title):
+        """创建卡片（不立即布局，等待统一布局）"""
         card = ctk.CTkFrame(parent, fg_color=GH_THEME["card"], corner_radius=12, border_width=1, border_color=GH_THEME["border"])
-        card.pack(fill="x", padx=32, pady=(0, 12))
+
+        # 卡片内部仍使用 pack
         ctk.CTkLabel(card, text=title, font=(FONT_FAMILY, 16, "bold"),
-                     text_color=GH_THEME["text"]).pack(anchor="w", padx=24, pady=(16, 8))
+                     text_color=GH_THEME["text"]).pack(anchor="w", padx=24, pady=(12, 6))
         ctk.CTkFrame(card, height=1, fg_color=GH_THEME["border"]).pack(fill="x")
-        ctk.CTkFrame(card, height=8, fg_color="transparent").pack() # Spacer
+
+        # 将卡片添加到父容器的卡片列表
+        if not hasattr(parent, '_cards'):
+            parent._cards = []
+        parent._cards.append(card)
+
         return card
+
+    def _relayout_cards(self, parent, columns):
+        """根据列数重新布局卡片（流式布局）"""
+        if not hasattr(parent, '_cards'):
+            return
+
+        # 清除现有布局
+        for card in parent._cards:
+            card.grid_forget()
+
+        # 配置列权重（uniform 确保列宽相等）
+        for col in range(columns):
+            parent.grid_columnconfigure(col, weight=1, uniform="card")
+
+        # 清除多余列
+        for col in range(columns, 5):
+            parent.grid_columnconfigure(col, weight=0, uniform="")
+
+        # 重新布局卡片
+        for idx, card in enumerate(parent._cards):
+            row = idx // columns
+            col = idx % columns
+            card.grid(row=row, column=col, sticky="ew",
+                     padx=12, pady=8)
 
     def _add_field(self, parent, label, var=None, show=None, combo=False, values=None, cb=None, label_width=100, no_pack=False):
         row = ctk.CTkFrame(parent, fg_color="transparent")
         if not no_pack:
-            row.pack(fill="x", padx=24, pady=6)
+            row.pack(fill="x", padx=24, pady=4)
 
         ctk.CTkLabel(row, text=label, font=(FONT_FAMILY, 14),
                      text_color=GH_THEME["text"], width=label_width, anchor="w").pack(side="left")
@@ -657,7 +778,7 @@ class CheckinApp(ctk.CTk):
             w = ctk.CTkEntry(row, **kw)
             w.pack(side="left", fill="x", expand=True)
             if no_pack:
-                row.pack(fill="x", padx=24, pady=6)
+                row.pack(fill="x", padx=24, pady=4)
             return w
 
     def _switch(self, parent, label, var):
