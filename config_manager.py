@@ -17,7 +17,8 @@ DEFAULT_PROVIDERS = {
     "2": {"name": "OpenAI", "base_url": "https://api.openai.com/v1", "default_model": "gpt-4o-mini"},
     "3": {"name": "DeepSeek Chat", "base_url": "https://api.deepseek.com", "default_model": "deepseek-chat"},
     "4": {"name": "DeepSeek Reasoner", "base_url": "https://api.deepseek.com", "default_model": "deepseek-reasoner"},
-    "5": {"name": "自定义 (OpenAI 兼容格式)", "base_url": "", "default_model": ""},
+    "5": {"name": "Google Gemini", "base_url": "https://generativelanguage.googleapis.com/v1beta", "default_model": "gemini-2.5-flash"},
+    "6": {"name": "自定义 (OpenAI 兼容格式)", "base_url": "", "default_model": ""},
 }
 
 
@@ -99,7 +100,7 @@ def setup_ai_config():
     choice = input("\n请输入编号 [1]: ").strip() or "1"
     provider = DEFAULT_PROVIDERS.get(choice, DEFAULT_PROVIDERS["1"])
 
-    if choice == "5":
+    if choice == "6":
         base_url = input("请输入 API Base URL: ").strip()
         default_model = input("请输入模型名称: ").strip()
     else:
@@ -113,7 +114,7 @@ def setup_ai_config():
     api_key = input("请输入 API Key: ").strip()
 
     return {
-        "provider": provider["name"] if choice != "5" else "自定义",
+        "provider": provider["name"] if choice != "6" else "自定义",
         "base_url": base_url,
         "model": default_model,
         "api_key": api_key,
